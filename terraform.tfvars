@@ -1,11 +1,43 @@
-subscription_id = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+subscription_id = "ef0f4d95-6d15-4eaa-b61a-81525fd20fbc"
 
 location = "uksouth"
 
 tags = {
   Environment = "Development"
-  Project     = "NetworkInfrastructure"
+  Project     = "NetworkPattern"
   Owner       = "Terraform"
+}
+
+dependent_resources = {
+  logs = {
+    log_analytics = [
+      {
+        name                = "centrallogs"
+        resource_group_name = "main-network-rg"
+      }
+    ],
+    storage_accounts = [
+      {
+        name                = "centraldiagnostics"
+        resource_group_name = "main-network-rg"
+      }
+    ],
+    event_hubs = [
+      {
+        name                = "centralevents"
+        namespace_name      = "centraleventsns"
+        resource_group_name = "main-network-rg"
+      }
+    ]
+  },
+  network = {
+    private_dns_zones = [
+      {
+        name                = "privatelink.vaultcore.azure.net"
+        resource_group_name = "main-network-rg"
+      }
+    ]
+  }
 }
 
 virtual_networks = {
@@ -17,6 +49,11 @@ virtual_networks = {
     tags = {
       NetworkType = "Primary"
     }
+    
+    # Add private DNS zones for Key Vault integration
+    private_dns_zones = [
+      "privatelink.vaultcore.azure.net"
+    ]
 
     subnets = {
       "web" = {
@@ -74,7 +111,7 @@ virtual_networks = {
       "data" = {
         name              = "data-subnet"
         address_prefixes  = ["10.0.3.0/24"]
-        service_endpoints = ["Microsoft.Sql", "Microsoft.Storage"]
+        service_endpoints = ["Microsoft.Sql", "Microsoft.Storage", "Microsoft.KeyVault"]
 
         network_security_group = {
           rules = [
@@ -91,6 +128,90 @@ virtual_networks = {
             }
           ]
         }
+      },
+
+      "private-endpoints" = {
+        name             = "private-endpoints-subnet"
+        address_prefixes = ["10.0.4.0/24"]
+        
+
+        network_security_group = {
+          rules = [
+            {
+              name                         = "deny-inbound-internet"
+              priority                     = 100
+              direction                    = "Inbound"
+              access                       = "Deny"
+              protocol                     = "*"
+              source_port_ranges           = ["*"]
+              destination_port_ranges      = ["*"]
+              source_address_prefixes      = ["Internet"]
+              destination_address_prefixes = ["*"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+
+key_vaults = {
+  "main" = {
+    naming = {
+      override_prefixes = ["dev", "kv"]
+      override_separator = "-"
+    },
+    resource_group_name = "main-network-rg"
+    sku_name            = "standard"
+    enabled_for_deployment          = true
+    enabled_for_disk_encryption     = true
+    enabled_for_template_deployment = true
+    enable_rbac_authorization       = true
+    public_network_access_enabled   = false
+    soft_delete_retention_days      = 90
+    purge_protection_enabled        = true
+    tags = {}
+    
+    private_endpoints = {
+      "endpoint1" = {
+
+        resource_group_name = "main-network-rg"
+        subnet_key = "private-endpoints"
+        vnet_key   = "main"
+        private_dns_zones = [
+          "privatelink.vaultcore.azure.net"
+        ]
+        subresources = ["vault"]
+        tags = {}
+      }
+    }
+    
+    network_acls = {
+      default_action = "Deny"
+      bypass         = "AzureServices"
+      ip_rules       = []
+    }
+    
+    diagnostic_settings = {
+      enabled_logs = [
+        {
+          category_group = "allLogs"
+        },
+        {
+          category_group = "audit"
+        }
+      ],
+      metrics = [
+        {
+          category = "AllMetrics"
+          enabled  = true
+        }
+      ],
+      log_analytics_key = "centrallogs"
+      storage_account_key = "centraldiagnostics"
+      event_hub = {
+        key = "centralevents"
+        authorization_rule_name = "RootManageSharedAccessKey"
       }
     }
   }
