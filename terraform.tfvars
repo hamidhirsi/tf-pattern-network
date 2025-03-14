@@ -49,7 +49,7 @@ virtual_networks = {
     tags = {
       NetworkType = "Primary"
     }
-    
+
     # Add private DNS zones for Key Vault integration
     private_dns_zones = [
       "privatelink.vaultcore.azure.net"
@@ -133,7 +133,7 @@ virtual_networks = {
       "private-endpoints" = {
         name             = "private-endpoints-subnet"
         address_prefixes = ["10.0.4.0/24"]
-        
+
 
         network_security_group = {
           rules = [
@@ -158,11 +158,11 @@ virtual_networks = {
 key_vaults = {
   "main" = {
     naming = {
-      override_prefixes = ["dev", "kv"]
+      override_prefixes  = ["dev", "kv"]
       override_separator = "-"
     },
-    resource_group_name = "main-network-rg"
-    sku_name            = "standard"
+    resource_group_name             = "main-network-rg"
+    sku_name                        = "standard"
     enabled_for_deployment          = true
     enabled_for_disk_encryption     = true
     enabled_for_template_deployment = true
@@ -170,28 +170,28 @@ key_vaults = {
     public_network_access_enabled   = false
     soft_delete_retention_days      = 90
     purge_protection_enabled        = true
-    tags = {}
-    
+    tags                            = {}
+
     private_endpoints = {
       "endpoint1" = {
 
         resource_group_name = "main-network-rg"
-        subnet_key = "private-endpoints"
-        vnet_key   = "main"
+        subnet_key          = "private-endpoints"
+        vnet_key            = "main"
         private_dns_zones = [
           "privatelink.vaultcore.azure.net"
         ]
         subresources = ["vault"]
-        tags = {}
+        tags         = {}
       }
     }
-    
+
     network_acls = {
       default_action = "Deny"
       bypass         = "AzureServices"
       ip_rules       = []
     }
-    
+
     diagnostic_settings = {
       enabled_logs = [
         {
@@ -207,10 +207,10 @@ key_vaults = {
           enabled  = true
         }
       ],
-      log_analytics_key = "centrallogs"
+      log_analytics_key   = "centrallogs"
       storage_account_key = "centraldiagnostics"
       event_hub = {
-        key = "centralevents"
+        key                     = "centralevents"
         authorization_rule_name = "RootManageSharedAccessKey"
       }
     }
