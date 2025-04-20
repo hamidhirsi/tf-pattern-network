@@ -15,6 +15,47 @@ variable "tags" {
   default     = {}
 }
 
+variable "dependent_resources" {
+  description = "External resources this module depends on but doesn't create"
+  type = object({
+    logs = object({
+      log_analytics = list(object({
+        name                = string
+        resource_group_name = string
+        subscription_id     = optional(string)
+      }))
+      storage_accounts = list(object({
+        name                = string
+        resource_group_name = string
+        subscription_id     = optional(string)
+      }))
+      event_hubs = list(object({
+        name                = string
+        namespace_name      = string
+        resource_group_name = string
+        subscription_id     = optional(string)
+      }))
+    })
+    network = object({
+      private_dns_zones = list(object({
+        name                = string
+        resource_group_name = string
+        subscription_id     = optional(string)
+      }))
+    })
+  })
+  default = {
+    logs = {
+      log_analytics    = []
+      storage_accounts = []
+      event_hubs       = []
+    }
+    network = {
+      private_dns_zones = []
+    }
+  }
+}
+
 variable "virtual_networks" {
   description = "Map of virtual networks with their subnets and network security groups"
   type = map(object({

@@ -6,11 +6,11 @@ locals {
         for subnet_key, subnet_value in net_value.subnets : merge(
           subnet_value,
           {
-            vnet_key            = net_key
-            vnet_name           = net_value.name
+            vnet_key             = net_key
+            vnet_name            = net_value.name
             virtual_network_name = azurerm_virtual_network.this[net_key].name
-            resource_group_name = azurerm_resource_group.main.name
-            subnet_key          = subnet_key
+            resource_group_name  = azurerm_resource_group.main.name
+            subnet_key           = subnet_key
           }
         )
       ]
