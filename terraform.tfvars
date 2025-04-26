@@ -4,7 +4,7 @@ location = "uksouth"
 
 tags = {
   Environment = "Development"
-  Project     = "NetworkPattern"
+  Project     = "AKS-ML-Pattern"
   Owner       = "Terraform"
 }
 
@@ -32,8 +32,22 @@ dependent_resources = {
   },
   network = {
     private_dns_zones = [
+      # Existing zones
       {
         name                = "privatelink.vaultcore.azure.net"
+        resource_group_name = "main-network-rg"
+      },
+      # New zones for AKS, ACR, ML
+      {
+        name                = "privatelink.azurecr.io"
+        resource_group_name = "main-network-rg"
+      },
+      {
+        name                = "privatelink.api.azureml.ms"
+        resource_group_name = "main-network-rg"
+      },
+      {
+        name                = "privatelink.notebooks.azure.net"
         resource_group_name = "main-network-rg"
       }
     ]
@@ -151,6 +165,143 @@ virtual_networks = {
           ]
         }
       }
+    }
+  }
+}
+
+
+kubernetes_clusters = {
+  "main" = {
+    naming = {
+      override_prefixes  = ["dev", "aks"]
+      override_separator = "-"
+    }
+    resource_group_name     = "main-network-rg"
+    dns_prefix              = "devaks"
+    kubernetes_version      = "1.30.0"
+    private_cluster_enabled = true
+
+    # Example: Explicit access configuration (optional)
+    # If omitted, access is granted to all ACRs and Key Vaults
+    acr_access_keys = ["main"] # Grant access only to "main" ACR
+    kv_access_keys  = ["main"] # Grant access only to "main" Key Vault
+
+    default_node_pool = {
+      name                 = "default"
+      vm_size              = "Standard_DS2_v2"
+      node_count           = 1
+      vnet_key             = "main"
+      subnet_key           = "private-endpoints"
+      os_disk_size_gb      = 128
+      auto_scaling_enabled = true
+      min_count            = 1
+      max_count            = 3
+    }
+
+    identity = {
+      type = "SystemAssigned"
+    }
+
+    diagnostic_settings = {
+      enabled_logs = [
+        {
+          category_group = "allLogs"
+        }
+      ],
+      metrics = [
+        {
+          category = "AllMetrics"
+          enabled  = true
+        }
+      ],
+      log_analytics_key = "centrallogs"
+    }
+  }
+}
+
+# Azure Container Registry configuration
+container_registries = {
+  "main" = {
+    naming = {
+      name = "hamiddevacr12" # ACR names must be globally unique and alphanumeric only
+    }
+    resource_group_name = "main-network-rg"
+    sku                 = "Premium"
+    admin_enabled       = true
+
+    private_endpoints = {
+      "endpoint1" = {
+        resource_group_name = "main-network-rg"
+        subnet_key          = "private-endpoints"
+        vnet_key            = "main"
+        private_dns_zones = [
+          "privatelink.azurecr.io"
+        ]
+        subresources = ["registry"]
+      }
+    }
+
+    diagnostic_settings = {
+      enabled_logs = [
+        {
+          category_group = "allLogs"
+        }
+      ],
+      metrics = [
+        {
+          category = "AllMetrics"
+          enabled  = true
+        }
+      ],
+      log_analytics_key = "centrallogs"
+    }
+  }
+}
+
+# Azure Machine Learning Workspace configuration
+machine_learning_workspaces = {
+  "main" = {
+    naming = {
+      override_prefixes  = ["dev", "ml"]
+      override_separator = "-"
+    }
+    resource_group_name    = "main-network-rg"
+    storage_account_key    = "centraldiagnostics"
+    key_vault_key          = "main"
+    container_registry_key = "main"
+    public_network_access  = "Disabled"
+
+    private_endpoints = {
+      "endpoint1" = {
+        resource_group_name = "main-network-rg"
+        subnet_key          = "private-endpoints"
+        vnet_key            = "main"
+        private_dns_zones = [
+          "privatelink.api.azureml.ms"
+        ]
+        subresources = ["amlworkspace"]
+      }
+    }
+
+    application_insights = {
+      tags = {
+        environment = "dev"
+      }
+    }
+
+    diagnostic_settings = {
+      enabled_logs = [
+        {
+          category_group = "allLogs"
+        }
+      ],
+      metrics = [
+        {
+          category = "AllMetrics"
+          enabled  = true
+        }
+      ],
+      log_analytics_key = "centrallogs"
     }
   }
 }
