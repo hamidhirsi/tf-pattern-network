@@ -71,7 +71,8 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
 
   identity {
-    type = each.value.identity.type
+    type         = each.value.user_assigned_identity_key != null ? "UserAssigned" : "SystemAssigned"
+    identity_ids = each.value.user_assigned_identity_key != null ? [azurerm_user_assigned_identity.this[each.value.user_assigned_identity_key].id] : []
   }
 
   network_profile {
@@ -128,71 +129,57 @@ resource "azurerm_private_endpoint" "aks" {
   }
 }
 
-
-resource "azurerm_user_assigned_identity" "aks-managed-identity" {
-  name                = "aks-managed-identity"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-}
-
-resource "azurerm_role_assignment" "network_contributor" {
-  scope                = var.scope
-  role_definition_name = "Network Contributor"
-  principal_id         = azurerm_user_assigned_identity.aks-managed-identity.principal_id
-}
-
-
 # Role assignments for AKS clusters to access ACRs
-resource "azurerm_role_assignment" "aks_acr" {
-  for_each = {
-    for pair in flatten([
-      for aks_key, aks in var.kubernetes_clusters : [
-        # If acr_access_keys is empty, grant access to all ACRs
-        # Otherwise, only grant access to the specified ACRs
-        for acr_key in length(aks.acr_access_keys) == 0 ? keys(var.container_registries) : aks.acr_access_keys : {
-          aks_key = aks_key
-          acr_key = acr_key
-          id      = "${aks_key}-${acr_key}"
-        } if contains(keys(var.container_registries), acr_key)
-      ]
-    ]) : pair.id => pair
-  }
+# resource "azurerm_role_assignment" "aks_acr" {
+#   for_each = {
+#     for pair in flatten([
+#       for aks_key, aks in var.kubernetes_clusters : [
+#         # If acr_access_keys is empty, grant access to all ACRs
+#         # Otherwise, only grant access to the specified ACRs
+#         for acr_key in length(aks.acr_access_keys) == 0 ? keys(var.container_registries) : aks.acr_access_keys : {
+#           aks_key = aks_key
+#           acr_key = acr_key
+#           id      = "${aks_key}-${acr_key}"
+#         } if contains(keys(var.container_registries), acr_key)
+#       ]
+#     ]) : pair.id => pair
+#   }
 
-  scope                = azurerm_container_registry.this[each.value.acr_key].id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_kubernetes_cluster.this[each.value.aks_key].kubelet_identity[0].object_id
+#   scope                = azurerm_container_registry.this[each.value.acr_key].id
+#   role_definition_name = "AcrPull"
+#   principal_id         = azurerm_kubernetes_cluster.this[each.value.aks_key].kubelet_identity[0].object_id
 
-  depends_on = [
-    azurerm_kubernetes_cluster.this,
-    azurerm_container_registry.this
-  ]
-}
+#   depends_on = [
+#     azurerm_kubernetes_cluster.this,
+#     azurerm_container_registry.this
+#   ]
+# }
 
-# Role assignments for AKS clusters to access Key Vaults
-resource "azurerm_role_assignment" "aks_kv" {
-  for_each = {
-    for pair in flatten([
-      for aks_key, aks in var.kubernetes_clusters : [
-        # If kv_access_keys is empty, grant access to all Key Vaults
-        # Otherwise, only grant access to the specified Key Vaults
-        for kv_key in length(aks.kv_access_keys) == 0 ? keys(var.key_vaults) : aks.kv_access_keys : {
-          aks_key = aks_key
-          kv_key  = kv_key
-          id      = "${aks_key}-${kv_key}"
-        } if contains(keys(var.key_vaults), kv_key)
-      ]
-    ]) : pair.id => pair
-  }
+# # Role assignments for AKS clusters to access Key Vaults
+# resource "azurerm_role_assignment" "aks_kv" {
+#   for_each = {
+#     for pair in flatten([
+#       for aks_key, aks in var.kubernetes_clusters : [
+#         # If kv_access_keys is empty, grant access to all Key Vaults
+#         # Otherwise, only grant access to the specified Key Vaults
+#         for kv_key in length(aks.kv_access_keys) == 0 ? keys(var.key_vaults) : aks.kv_access_keys : {
+#           aks_key = aks_key
+#           kv_key  = kv_key
+#           id      = "${aks_key}-${kv_key}"
+#         } if contains(keys(var.key_vaults), kv_key)
+#       ]
+#     ]) : pair.id => pair
+#   }
 
-  scope                = azurerm_key_vault.this[each.value.kv_key].id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_kubernetes_cluster.this[each.value.aks_key].kubelet_identity[0].object_id
+#   scope                = azurerm_key_vault.this[each.value.kv_key].id
+#   role_definition_name = "Key Vault Secrets User"
+#   principal_id         = azurerm_kubernetes_cluster.this[each.value.aks_key].kubelet_identity[0].object_id
 
-  depends_on = [
-    azurerm_kubernetes_cluster.this,
-    azurerm_key_vault.this
-  ]
-}
+#   depends_on = [
+#     azurerm_kubernetes_cluster.this,
+#     azurerm_key_vault.this
+#   ]
+# }
 
 # Diagnostic settings for AKS
 resource "azurerm_monitor_diagnostic_setting" "aks" {

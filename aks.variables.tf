@@ -11,9 +11,10 @@ variable "kubernetes_clusters" {
     private_cluster_enabled = optional(bool, true)
     tags                    = optional(map(string), {})
 
+    user_assigned_identity_key = optional(string)
+
     acr_access_keys = optional(list(string), []) # List of ACR keys to access, empty means all
     kv_access_keys  = optional(list(string), []) # List of Key Vault keys to access, empty means all
-
 
     default_node_pool = object({
       name                 = string

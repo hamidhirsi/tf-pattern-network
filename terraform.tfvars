@@ -169,6 +169,18 @@ virtual_networks = {
   }
 }
 
+managed_identities = {
+  "aks-identity" = {
+    name                = "dev-aks-identity"
+    resource_group_name = "main-network-rg"
+
+    role_assignments = [
+      { role_definition_name = "AcrPull" },
+      { role_definition_name = "Key Vault Secrets User" },
+      { role_definition_name = "Network Contributor" }
+    ]
+  }
+}
 
 kubernetes_clusters = {
   "main" = {
@@ -181,10 +193,11 @@ kubernetes_clusters = {
     kubernetes_version      = "1.30.0"
     private_cluster_enabled = true
 
-    # Example: Explicit access configuration (optional)
-    # If omitted, access is granted to all ACRs and Key Vaults
-    acr_access_keys = ["main"] # Grant access only to "main" ACR
-    kv_access_keys  = ["main"] # Grant access only to "main" Key Vault
+    user_assigned_identity_key = "aks-identity"
+    # # Example: Explicit access configuration (optional)
+    # # If omitted, access is granted to all ACRs and Key Vaults
+    # acr_access_keys = ["main"] # Grant access only to "main" ACR
+    # kv_access_keys  = ["main"] # Grant access only to "main" Key Vault
 
     default_node_pool = {
       name                 = "default"
@@ -262,7 +275,7 @@ container_registries = {
 machine_learning_workspaces = {
   "main" = {
     naming = {
-      override_prefixes  = ["dev", "ml"]
+      override_prefixes  = ["dev", "ml", "v2"]
       override_separator = "-"
     }
     resource_group_name    = "main-network-rg"
@@ -285,7 +298,8 @@ machine_learning_workspaces = {
 
     application_insights = {
       tags = {
-        environment = "dev"
+        workspace_key = "centrallogs"
+        environment   = "dev"
       }
     }
 

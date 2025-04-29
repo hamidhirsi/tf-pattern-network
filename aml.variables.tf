@@ -14,8 +14,9 @@ variable "machine_learning_workspaces" {
     tags                     = optional(map(string), {})
 
     application_insights = optional(object({
-      name = optional(string)
-      tags = optional(map(string))
+      name          = optional(string)
+      tags          = optional(map(string))
+      workspace_key = optional(string)
     }), null)
 
     private_endpoints = optional(map(object({

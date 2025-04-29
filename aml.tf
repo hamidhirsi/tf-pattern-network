@@ -51,7 +51,7 @@ resource "azurerm_machine_learning_workspace" "this" {
   name                          = each.value.name
   location                      = var.location
   resource_group_name           = each.value.resource_group_name
-  application_insights_id = each.value.application_insights != null ? azurerm_application_insights.this[each.key].id : null
+  application_insights_id       = each.value.application_insights != null ? azurerm_application_insights.this[each.key].id : null
   key_vault_id                  = each.value.key_vault_key != null ? azurerm_key_vault.this[each.value.key_vault_key].id : null
   storage_account_id            = each.value.storage_account_key != null ? azurerm_storage_account.this[each.value.storage_account_key].id : null
   container_registry_id         = each.value.container_registry_key != null ? azurerm_container_registry.this[each.value.container_registry_key].id : null
@@ -118,6 +118,7 @@ resource "azurerm_application_insights" "this" {
   location            = var.location
   resource_group_name = each.value.resource_group_name
   application_type    = "web"
+  workspace_id        = each.value.application_insights.workspace_key != null ? azurerm_log_analytics_workspace.this[each.value.application_insights.workspace_key].id : null
   tags                = merge(var.tags, try(each.value.application_insights.tags, {}))
 }
 
